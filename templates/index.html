@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 Precision Detection</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!--<header class="topbar">
+        <div class="brand">
+            <span class="logo">◈</span>
+            <div>
+                <h2>Vision<span>AI</span></h2>
+                <small>PRECISION DETECTION SYSTEM</small>
+            </div>
+        </div>
+
+        <div class="live-badge">
+            <span class="dot"></span> SYSTEM LIVE
+        </div>
+    </header>-->
+
+    <main>
+
+        <div class="heading">
+            <div>
+                <h1>Object Detection <span>& Tracking</span></h1>
+                <p>Real-time computer vision analytics powered by YOLO</p>
+            </div>
+        </div>
+
+        <section class="metrics">
+
+            <div class="metric">
+                <div class="metric-icon cyan">◈</div>
+                <div>
+                    <small>IN-FRAME OBJECTS</small>
+                    <h2 id="objects">0</h2>
+                    <p>Active entities</p>
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-icon purple">◎</div>
+                <div>
+                    <small>CUMULATIVE TRACKS</small>
+                    <h2 id="tracks">0</h2>
+                    <p>Unique IDs registered</p>
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-icon green">◉</div>
+                <div>
+                    <small>THROUGHPUT / SPEED</small>
+                    <h2><span id="fps">0</span> FPS</h2>
+                    <p>Live processing</p>
+                </div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-icon orange">▣</div>
+                <div>
+                    <small>MODEL ARCHITECTURE</small>
+                    <h2 class="model-name">YOLOv5su</h2>
+                    <p>Tracker: <span id="trackerLabel">ByteTrack</span></p>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="workspace">
+
+            <div class="video-column">
+
+                <div class="video-panel">
+                    <div class="video-header">
+                        <span><span class="dot"></span> LIVE DETECTION FEED</span>
+                        <span id="status">CONNECTING...</span>
+                    </div>
+
+                    <img src="/video_feed" id="videoFeed" alt="Live detection feed">
+                </div>
+
+                <div class="class-panel">
+                    <div class="class-title">DETECTED CLASSES</div>
+                    <div id="classes">
+                        <span class="class-chip">Waiting for detection...</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <aside class="controls">
+
+                <h3>☷ Detection Controls</h3>
+
+                <div class="control-group">
+                    <label>Confidence Threshold <b id="confidenceValue">40%</b></label>
+                    <input type="range" id="confidence" min="5" max="95" value="40">
+                    <small>Adjust the minimum confidence required for detection.</small>
+                </div>
+
+                <div class="control-group">
+                    <label>Multi-Object Tracker</label>
+                    <div class="button-group">
+                        <button class="selected" data-tracker="bytetrack.yaml">ByteTrack</button>
+                        <button data-tracker="botsort.yaml">BoT-SORT</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Video Input Source</label>
+                    <div class="source-options">
+                        <button class="selected">◎ Webcam</button>
+                    </div>
+                    <small>Video source is configured at launch.</small>
+                </div>
+
+                <div class="control-group">
+                    <label>Trajectory Motion Trails</label>
+                    <div class="toggle-row">
+                        <small>Track historical movement</small>
+                        <input type="checkbox" id="trails">
+                    </div>
+                    <small>Trail rendering can be added to the processing pipeline.</small>
+                </div>
+
+                <button id="resetBtn" class="reset-btn">↻ Reset Track Counters & History</button>
+
+            </aside>
+
+        </section>
+
+        <footer>
+            <span>VISION AI · COMPUTER VISION ANALYTICS</span>
+            <span>YOLO + OpenCV + Flask</span>
+        </footer>
+
+    </main>
+
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 # YOLO model weights
-yolo5su.pt
+yolov5su.pt
 
 # Python cache
 __pycache__/

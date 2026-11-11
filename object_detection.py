@@ -2,7 +2,10 @@
 import cv2
 import time
 import argparse
+import threading
 from collections import Counter
+
+from flask import Flask, render_template, Response, jsonify, request
 from ultralytics import YOLO
 
 
@@ -11,193 +14,131 @@ from ultralytics import YOLO
 # ==========================================================
 
 MODEL_PATH = "yolov5su.pt"
-CONFIDENCE_THRESHOLD = 0.40
+
+app = Flask(__name__)
+
+settings = {
+    "confidence": 0.40,
+    "tracker": "bytetrack.yaml",
+    "source": 0,
+    "trails": False
+}
+
+stats = {
+    "objects": 0,
+    "unique_tracks": 0,
+    "fps": 0.0,
+    "classes": {},
+    "model": MODEL_PATH,
+    "status": "Initializing"
+}
+
+unique_track_ids = set()
+settings_lock = threading.Lock()
+stats_lock = threading.Lock()
 
 COLORS = [
-    (140, 100, 255),
+    (255, 180, 70),
+    (180, 100, 255),
     (80, 220, 180),
-    (255, 170, 80),
     (100, 180, 255),
     (255, 100, 180),
-    (180, 255, 100),
+    (180, 255, 100)
 ]
 
 
 # ==========================================================
-# HELPERS
+# MODEL
 # ==========================================================
 
-def draw_label(frame, text, x, y, color):
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    scale = 0.55
-    thickness = 2
-
-    (w, h), baseline = cv2.getTextSize(
-        text, font, scale, thickness
-    )
-
-    y = max(y, h + 12)
-
-    cv2.rectangle(
-        frame,
-        (x, y - h - 10),
-        (x + w + 10, y + baseline),
-        color,
-        -1
-    )
-
-    cv2.putText(
-        frame,
-        text,
-        (x + 5, y - 4),
-        font,
-        scale,
-        (15, 20, 35),
-        thickness,
-        cv2.LINE_AA
-    )
-
-
-def draw_hud(frame, fps, object_count, class_counts):
-    h, w = frame.shape[:2]
-
-    # Header background
-    overlay = frame.copy()
-    cv2.rectangle(
-        overlay,
-        (0, 0),
-        (w, 75),
-        (12, 18, 32),
-        -1
-    )
-
-    cv2.addWeighted(
-        overlay,
-        0.88,
-        frame,
-        0.12,
-        0,
-        frame
-    )
-
-    # Header title
-    cv2.putText(
-        frame,
-        "AI OBJECT DETECTION & TRACKING",
-        (22, 32),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.75,
-        (220, 225, 255),
-        2,
-        cv2.LINE_AA
-    )
-
-    cv2.putText(
-        frame,
-        "LIVE ANALYTICS",
-        (22, 56),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.42,
-        (180, 140, 255),
-        1,
-        cv2.LINE_AA
-    )
-
-    # FPS
-    cv2.putText(
-        frame,
-        f"FPS: {fps:.1f}",
-        (w - 220, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.65,
-        (100, 255, 190),
-        2,
-        cv2.LINE_AA
-    )
-
-    # Object count
-    cv2.putText(
-        frame,
-        f"OBJECTS: {object_count}",
-        (w - 220, 58),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.55,
-        (220, 225, 255),
-        2,
-        cv2.LINE_AA
-    )
-
-    # Bottom analytics panel
-    panel_height = 45
-
-    cv2.rectangle(
-        frame,
-        (0, h - panel_height),
-        (w, h),
-        (12, 18, 32),
-        -1
-    )
-
-    summary = " | ".join(
-        f"{name}: {count}"
-        for name, count in class_counts.items()
-    )
-
-    if not summary:
-        summary = "No objects detected"
-
-    cv2.putText(
-        frame,
-        summary[:100],
-        (20, h - 16),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.48,
-        (180, 220, 255),
-        1,
-        cv2.LINE_AA
-    )
+print("[INFO] Loading YOLO model...")
+model = YOLO(MODEL_PATH)
+print("[INFO] YOLO model loaded!")
 
 
 # ==========================================================
-# MAIN DETECTION
+# DASHBOARD ROUTES
 # ==========================================================
 
-def run_detection(source=0):
-    print("[INFO] Loading YOLO model...")
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-    model = YOLO(MODEL_PATH)
 
-    print("[INFO] Starting video input...")
+@app.route("/stats")
+def get_stats():
+    with stats_lock:
+        return jsonify(stats.copy())
+
+
+@app.route("/settings", methods=["POST"])
+def update_settings():
+    data = request.get_json(silent=True) or {}
+
+    with settings_lock:
+        if "confidence" in data:
+            settings["confidence"] = max(
+                0.05, min(float(data["confidence"]), 0.95)
+            )
+
+        if data.get("tracker") in ["bytetrack.yaml", "botsort.yaml"]:
+            settings["tracker"] = data["tracker"]
+
+        if "trails" in data:
+            settings["trails"] = bool(data["trails"])
+
+    return jsonify({"success": True})
+
+
+@app.route("/reset", methods=["POST"])
+def reset_stats():
+    unique_track_ids.clear()
+
+    with stats_lock:
+        stats["unique_tracks"] = 0
+
+    model.predictor = None
+
+    return jsonify({"success": True})
+
+
+# ==========================================================
+# VIDEO STREAM
+# ==========================================================
+
+def generate_frames(source):
 
     cap = cv2.VideoCapture(source)
 
     if not cap.isOpened():
-        print("[ERROR] Unable to open video source.")
+        with stats_lock:
+            stats["status"] = "Video source unavailable"
         return
-
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
     previous_time = time.time()
 
-    cv2.namedWindow(
-        "AI Object Detection & Tracking",
-        cv2.WINDOW_NORMAL
-    )
+    with stats_lock:
+        stats["status"] = "LIVE"
 
     while True:
-        ret, frame = cap.read()
 
-        if not ret:
-            print("[INFO] Video ended or frame unavailable.")
+        success, frame = cap.read()
+
+        if not success:
+            if isinstance(source, int):
+                time.sleep(0.02)
+                continue
             break
 
-        # YOLO detection and tracking
+        with settings_lock:
+            confidence = settings["confidence"]
+            tracker = settings["tracker"]
+
         results = model.track(
             frame,
             persist=True,
-            conf=CONFIDENCE_THRESHOLD,
-            tracker="bytetrack.yaml",
+            conf=confidence,
+            tracker=tracker,
             verbose=False
         )
 
@@ -207,41 +148,33 @@ def run_detection(source=0):
         class_counts = Counter()
 
         if result.boxes is not None:
-            boxes = result.boxes
 
-            for box in boxes:
-                coords = box.xyxy[0].cpu().numpy().astype(int)
+            for box in result.boxes:
 
-                x1, y1, x2, y2 = coords
+                x1, y1, x2, y2 = (
+                    box.xyxy[0].cpu().numpy().astype(int)
+                )
 
                 class_id = int(box.cls[0].item())
-                confidence = float(box.conf[0].item())
+                conf = float(box.conf[0].item())
 
                 class_name = model.names[class_id]
 
                 object_count += 1
                 class_counts[class_name] += 1
 
-                # Stable color for class
                 color = COLORS[class_id % len(COLORS)]
 
-                # Tracking ID
                 track_id = None
 
                 if box.id is not None:
                     track_id = int(box.id[0].item())
+                    unique_track_ids.add(track_id)
+
+                label = f"{class_name} {conf:.0%}"
 
                 if track_id is not None:
-                    label = (
-                        f"{class_name.upper()} "
-                        f"ID:{track_id} "
-                        f"{confidence:.0%}"
-                    )
-                else:
-                    label = (
-                        f"{class_name.upper()} "
-                        f"{confidence:.0%}"
-                    )
+                    label = f"ID:{track_id} {label}"
 
                 # Bounding box
                 cv2.rectangle(
@@ -253,112 +186,97 @@ def run_detection(source=0):
                 )
 
                 # Label background
-                draw_label(
+                label_y = max(y1 - 8, 20)
+
+                cv2.rectangle(
+                    frame,
+                    (x1, label_y - 25),
+                    (x1 + 220, label_y),
+                    color,
+                    -1
+                )
+
+                cv2.putText(
                     frame,
                     label,
-                    x1,
-                    y1,
-                    color
+                    (x1 + 5, label_y - 7),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.55,
+                    (15, 15, 25),
+                    2,
+                    cv2.LINE_AA
                 )
 
-                # Corner markers
-                corner_length = 15
-                thickness = 3
-
-                cv2.line(
-                    frame,
-                    (x1, y1),
-                    (x1 + corner_length, y1),
-                    color,
-                    thickness
-                )
-
-                cv2.line(
-                    frame,
-                    (x1, y1),
-                    (x1, y1 + corner_length),
-                    color,
-                    thickness
-                )
-
-                cv2.line(
-                    frame,
-                    (x2, y2),
-                    (x2 - corner_length, y2),
-                    color,
-                    thickness
-                )
-
-                cv2.line(
-                    frame,
-                    (x2, y2),
-                    (x2, y2 - corner_length),
-                    color,
-                    thickness
-                )
-
-        # Calculate FPS
         current_time = time.time()
-
         elapsed = current_time - previous_time
 
         fps = 1 / elapsed if elapsed > 0 else 0
-
         previous_time = current_time
 
-        # Draw analytics HUD
-        draw_hud(
+        # Update live dashboard analytics
+        with stats_lock:
+            stats["objects"] = object_count
+            stats["unique_tracks"] = len(unique_track_ids)
+            stats["fps"] = round(fps, 1)
+            stats["classes"] = dict(class_counts)
+            stats["status"] = "LIVE"
+
+        # Encode frame for browser
+        ret, buffer = cv2.imencode(
+            ".jpg",
             frame,
-            fps,
-            object_count,
-            class_counts
+            [cv2.IMWRITE_JPEG_QUALITY, 85]
         )
 
-        cv2.imshow(
-            "AI Object Detection & Tracking",
-            frame
+        if not ret:
+            continue
+
+        frame_bytes = buffer.tobytes()
+
+        yield (
+            b"--frame\r\n"
+            b"Content-Type: image/jpeg\r\n\r\n"
+            + frame_bytes
+            + b"\r\n"
         )
-
-        key = cv2.waitKey(1) & 0xFF
-
-        # Press Q to quit
-        if key == ord("q"):
-            break
-
-        # Press F for fullscreen toggle
-        if key == ord("f"):
-            cv2.setWindowProperty(
-                "AI Object Detection & Tracking",
-                cv2.WND_PROP_FULLSCREEN,
-                cv2.WINDOW_FULLSCREEN
-            )
 
     cap.release()
-    cv2.destroyAllWindows()
 
-    print("[INFO] Detection stopped.")
+
+@app.route("/video_feed")
+def video_feed():
+
+    source = settings["source"]
+
+    return Response(
+        generate_frames(source),
+        mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
 
 
 # ==========================================================
-# ENTRY POINT
+# MAIN
 # ==========================================================
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="YOLO Object Detection and Tracking"
-    )
+
+    parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "--source",
         default="0",
-        help="Webcam index or path to video file"
+        help="Webcam index or video file path"
     )
 
     args = parser.parse_args()
 
-    source = args.source
+    source = int(args.source) if args.source.isdigit() else args.source
 
-    if source.isdigit():
-        source = int(source)
+    settings["source"] = source
 
-    run_detection(source)
+    app.run(
+        host="127.0.0.1",
+        port=5002,
+        debug=False,
+        threaded=True
+    )
