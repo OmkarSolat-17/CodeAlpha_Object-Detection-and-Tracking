@@ -1,13 +1,33 @@
-# YOLO model weights
-yolov5su.pt
+# Model weights (download via: python download_weights.py)
+*.pt
+*.pth
+*.onnx
+*.engine
 
-# Python cache
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+.pytest_cache/
 
-# Virtual environment
+# Virtual environments
+.venv/
 venv/
+env/
+ENV/
+
+# Environment variables
 .env
 
-# Generated output
-runs/
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads / generated output
+uploads/
+outputs/
+generated/
