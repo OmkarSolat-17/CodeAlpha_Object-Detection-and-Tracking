@@ -1,91 +1,109 @@
-# 👁️ Object Detection & Tracking (Task 4)
+# 🎯 Object Detection & Tracking
 
-A real-time object detection and multi-object tracking application built using YOLOv5su, OpenCV, and ByteTrack. The system detects objects in video streams and tracks their movement using unique tracking IDs.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Flask-000000?style=flat-square&logo=flask&logoColor=white" alt="Flask">
+  <img src="https://img.shields.io/badge/Model-YOLOv5-FF6F00?style=flat-square" alt="YOLOv5">
+  <img src="https://img.shields.io/badge/Tracking-ByteTrack-EE4C2C?style=flat-square" alt="ByteTrack">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
+</p>
+
+<p align="center">
+  <b>Real-time multi-object detection and tracking with YOLOv5 + ByteTrack and a live Flask dashboard.</b><br>
+  <sub>Webcam, video file, and image support with persistent object IDs and bounding boxes.</sub>
+</p>
+
+---
 
 ## ✨ Features
 
-- Real-time object detection
-- Multi-object tracking
-- Bounding boxes around detected objects
-- Object class labels and confidence scores
-- Unique tracking IDs
-- Webcam and video input support
-- FPS monitoring
-- Object detection analytics
-- Interactive web dashboard
+- Real-time object detection using YOLOv5
+- Multi-object tracking with ByteTrack algorithm
+- Persistent object IDs across frames
+- Live Flask dashboard with real-time video streaming
+- Webcam, video file, and image input support
+- Bounding boxes with tracking labels
+- Confidence score display
 
 ## 🛠️ Tech Stack
 
-- **Python** – Core programming
-- **YOLOv5su** – Object detection model
-- **Ultralytics** – Model integration
-- **OpenCV** – Video processing
-- **ByteTrack** – Multi-object tracking
-- **Flask** – Web dashboard and backend
-- **HTML5, CSS3, JavaScript** – Frontend
+| Component | Technology |
+|:----------|:-----------|
+| **Detection** | YOLOv5 (Ultralytics) |
+| **Tracking** | ByteTrack |
+| **Backend** | Python, Flask |
+| **Streaming** | OpenCV (MJPEG streaming) |
+| **Frontend** | HTML5, CSS3, JavaScript |
 
 ## ⚙️ Installation & Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/OmkarSolat-17/CodeAlpha_ObjectDetectionTracking.git
-cd CodeAlpha_ObjectDetectionTracking
+git clone https://github.com/OmkarSolat-17/CodeAlpha_Object-Detection-and-Tracking.git
+cd CodeAlpha_Object-Detection-and-Tracking
 ```
 
-### 2. Install dependencies
+### 2. Create virtual environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+```
+
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Run the application
+### 4. Download pretrained weights
+
+```bash
+# YOLOv5s weights (~14 MB) — download from Ultralytics releases
+# Place yolov5su.pt in the project root
+```
+
+### 5. Run the application
 
 ```bash
 python app.py
 ```
 
-### 4. Open in browser
+### 6. Open in browser
 
-Visit:
-
-```text
-http://127.0.0.1:5000
-```
+Visit: `http://127.0.0.1:5000`
 
 ## 🧠 How It Works
 
-1. The application receives video input from a webcam or video file.
-2. YOLOv5su detects objects in each frame.
-3. ByteTrack associates detected objects across consecutive frames.
-4. Each tracked object receives a tracking ID.
-5. OpenCV renders bounding boxes, labels, and confidence scores.
-6. Detection statistics are displayed through the dashboard.
+```
+Video Frame → YOLOv5 Detection → ByteTrack Association → Annotated Frame → MJPEG Stream → Dashboard
+```
+
+1. Video frame is captured from webcam, file, or image
+2. YOLOv5 detects objects and returns bounding boxes with confidence scores
+3. ByteTrack associates detections across frames, assigning persistent IDs
+4. Annotated frame with boxes and tracking IDs is streamed to the dashboard
+5. Dashboard displays live feed with detection statistics
 
 ## 📂 Project Structure
 
-```text
-CodeAlpha_ObjectDetectionTracking/
-├── app.py
-├── object_detection.py
-├── requirements.txt
+```
+CodeAlpha_Object-Detection-and-Tracking/
+├── app.py               # Flask app, streaming, and tracking pipeline
+├── requirements.txt     # Python dependencies
+├── yolov5su.pt          # Pretrained YOLOv5 weights (download separately)
 ├── templates/
-│   └── index.html
+│   └── index.html       # Dashboard template
 ├── static/
-│   ├── style.css
-│   └── script.js
+│   ├── style.css        # Styling
+│   └── script.js        # Frontend logic
 └── README.md
 ```
 
-## 📌 Model
-
-The project uses the pretrained `yolov5su.pt` model.
-
-The model weights are downloaded automatically by Ultralytics when required. The `.pt` file does not need to be committed to the repository.
-
 ## 🎯 Project Objective
 
-To implement a computer vision system demonstrating object detection, multi-object tracking, and real-time video analytics.
+Build a real-time object detection and tracking system combining YOLOv5 detection with ByteTrack multi-object tracking, served through a live Flask dashboard.
 
 ## 👨‍💻 Internship
 
@@ -93,4 +111,6 @@ This project was developed as part of the **Artificial Intelligence Internship a
 
 ---
 
-⭐ If you find this project interesting, consider giving it a star!
+<p align="center">
+  <sub>Built by <a href="https://github.com/OmkarSolat-17">Omkar Solat</a> · B.Tech CSE (AI/ML)</sub>
+</p>
